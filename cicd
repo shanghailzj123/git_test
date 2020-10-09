@@ -1,0 +1,115 @@
+rpm -ivh http://mirrors.aliyun.com/epel/epel-release-latest-7.noarch.rpm
+yum install -y net-tools vim lrzsz tree screen lsof wget ntpdate
+yum install -y libcurl-dev libcurl-devel expat-devel perl-ExtUtils-MakeMaker
+wget https://www.kernel.org/pub/software/scm/git/git-2.9.5.tar.gz
+tar xf git-2.9.5.tar.gz
+cd git-2.9.5
+make prefix=/usr/local/git all
+make prefix=/usr/local/git install
+rm -rf /usr/bin/git
+ln -s /usr/local/git/bin/git /usr/bin/git
+git --version
+Git 的配置从上到下分三层 system/global/local,使用三个不同参数进行设置，每个层次的配
+置存储在不同的位置，
+1）./etc/gitconfig 文件：包含了适用于系统所有用户和所有库的值。如果你传递参数选
+项’--system’ 给 git config，它将明确的读和写这个文件。
+2）.~/.gitconfig 文件 ：具体到你的用户。你可以通过传递--global 选项使 Git 读或写这
+个特定的文件。
+3）.位于 git 目录的 config 文件 (也就是 .git/config) ：无论你当前在用的库是什么，特
+定指向该单一的库。每个级别重写前一个级别的值。因此，在.git/config 中的值覆盖了在
+/etc/gitconfig 中的同一个值。
+设置本仓库的配置信息（用户名）
+git config --local user.name lizongjun
+git config --local user.email lzj296028656@163.com   #~/.gitconfig
+通常我们只配置 global 级别
+git config --global user.name lizongjun
+git config --global user.email lzj296028656@163.com
+git config --list
+mkdir ~/git_test
+创建一个空仓库
+git init
+空仓库创建完成后 gittest 文件夹下会生成一个.git 隐藏文件夹。仓库默认包含一个主支，即
+master，默认操作都是在主分支 master 上进行的。
+有了仓库，我们便可以在 git_test 文件夹下的工作区做文件增删修改工作了，但很多时候，我们只在意开发过程中的源文件，并不需要管理自动产生的其他临时文件。这时候我们
+便需要一个过滤文件，在这个文件中设置过滤规则，让 Git 能够自动过滤掉那些临时文件，
+这个文件便是.gitignore 文件
+//在仓库目录下创建.gitignore 文件
+touch .gitignore
+[root@ci-node1 git_test]# cat .gitignore
+test.txt //过滤 test.txt 文件
+/test/ //过滤 test 目录
+*.txt //过滤所有以.txt 结尾的文件
+常用的通配规则：
+以斜杠“/”开头表示目录
+以星号“*”通配多个字符
+以问号“?”通配单个字符
+以方括号“[]”包含单个字符的匹配列表
+以叹号“!”表示不忽略(跟踪)匹配到的文件或目录
+git四个区域:远程仓库<>本地仓库<>暂存仓库<>工作目录
+前面讲了 Git 有四个区域，而单就文件改动状态层面而言，Git 区域内的文件也有 4 种
+状态（需要注意的是文件状态并不是与Git区域一一对应的），这是Git第二个重要概念。
+Untracked：新增的文件的状态，未受 Git 管理，记录在工作区
+Modified：受 Git 管理过的文件的改动状态（包括改动内容、删除文件），记录在工作区
+Staged：将记录在工作区的文件变动状态通知了 Git，记录在暂存区
+Unmodified：受 Git 管理中的文件状态（没有变动），记录在本地仓库/远程仓库
+git add a b c #add是将文件提交到暂存区
+git status
+将暂存区文件改动回退 git rm，两种一种是丢弃一种是从暂存区回退到工作区
+git rm --cached b #将 b 的改动从暂存区工作区
+git rm -f c #直接去除
+将暂存区文件移动位置/ 重命名 git mv
+git mv a a.txt
+当我们在仓库工作区下完成了文件增删改操作之后，并且使用 git add 将文件改动记录在暂存区
+之后，便可以开始将其提交到 Git 本地仓库。
+将暂存区内容提交 git commit –m “” 到本地仓库
+git commit -m "commit a"
+echo test >> a.txt
+git diff a.txt  #对比工作区和暂存区
+git add a.txt
+git diff --cached a.txt #对比暂存区和本地仓库
+查看历史提交 git log
+git log
+git log --oneline #精简
+git log -p #产看所有信息，包括改动
+git log 仅能查看最终在仓库存在的提交信息，无法查看被删除的提交，以及在本地具体 Git
+命令操作记录，这时候你需要使用 git reflog
+git reflog
+签出 git checkout
+如果仓库中已经存在文件 a.txt，在工作区中对 a.txt 修改了，如果想撤销可以使用 checkout，
+签出覆盖。检出命令 git checkout 是 git 最常用的命令之一，同时也是一个很危险的命令，
+因为这条命令会重写工作区，用暂存区中 filename 文件来覆盖工作区中的 filename 文件。相当于取消自上次执行 git add
+filename 以来（如果执行过）的本地修改
+git checkout -- a.txt
+撤销提交（commit）
+原理就是放弃工作区和 index 的改动，同时 HEAD 指针指向前一个 commit 对象。
+//撤销上一次的提交
+git reset –hard HEAD ^1
+//要通过 git log 查看提交日志，也可直接指定提交编号或序号
+[root@ci-node01 git_test]# git log --oneline
+6fe0def commit b
+30b7f11 commit a
+git reset --hard 6fe0def
+我们可以使用 git branch 命令创建一个新的分支指针
+git branch testing
+git branch
+git checkout testing #切换到分支工作,head指针指向分支了
+分支合并
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
